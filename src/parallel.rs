@@ -5,8 +5,8 @@ use serde_json::Value; // Import serde_json::Value
 use crate::read_excel::process_file;
 use anyhow::Result; // Use anyhow::Result for simplified error handling
 
-pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>) -> Result<Vec<Vec<String>>> {
-    let semaphore = Arc::new(Semaphore::new(5)); // Wrap Semaphore in an Arc for shared ownership
+pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>, num_workers: usize) -> Result<Vec<Vec<String>>> {
+    let semaphore = Arc::new(Semaphore::new(num_workers)); // Wrap Semaphore in an Arc for shared ownership
 
     let mut futures = FuturesUnordered::new(); // Create a FuturesUnordered collection for managing futures
 

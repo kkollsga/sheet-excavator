@@ -6,6 +6,6 @@ extraction_details = [
     {"sheets":["Generell info og kommentarer"], "cells":["d7", "m8"], "value_name": ["field", "od-id"]},
     {"sheets":["Profil_1", "Profil_2"], "cells":["h7"], "value_name": ["project_name"]}
 ]
-results = sheet_excavator.excel_extract(files,extraction_details)
+results = sheet_excavator.excel_extract(files,extraction_details,5)
 
 print("RESULTS::::", results)

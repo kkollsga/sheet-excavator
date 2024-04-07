@@ -9,7 +9,7 @@ mod read_excel;
 use parallel::process_files;
 
 #[pyfunction]
-fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList) -> PyResult<Vec<Vec<String>>> {
+fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<Vec<Vec<String>>> {
     let file_paths: Vec<String> = file_paths.iter().map(|p| {
         p.extract::<String>()
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error extracting string: {}", e)))
@@ -37,7 +37,7 @@ fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList) 
     let rt = runtime::Runtime::new().unwrap();
     let result = rt.block_on(async {
         // Make sure to adjust the process_files function to accept Vec<Value>
-        process_files(file_paths, extraction_details_serde).await
+        process_files(file_paths, extraction_details_serde, num_workers.unwrap_or(5)).await
     }).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error processing files: {}", e)))?;
 
     Ok(result)
