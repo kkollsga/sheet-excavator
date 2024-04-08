@@ -1,50 +1,44 @@
-use pyo3::types::{PyList, PyDict};
+use pyo3::types::PyList;
 use pyo3::prelude::*;
-use serde_json::{Value, json};
-use std::collections::HashMap;
+use serde_json::to_string;
 use tokio::runtime;
 
 mod parallel;
 mod read_excel;
 use parallel::process_files;
+mod utils; // Import the utils module
+use utils::pylist_to_json; // Import the conversion function
 
 #[pyfunction]
-fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<Vec<Vec<String>>> {
+fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<Vec<String>> {
+    // Extract file paths from Python list to Rust Vec<String>
     let file_paths: Vec<String> = file_paths.iter().map(|p| {
         p.extract::<String>()
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error extracting string: {}", e)))
     }).collect::<PyResult<Vec<String>>>()?;
 
-    // Convert PyList extraction_details into Serde Value
-    let extraction_details_serde: Vec<Value> = extraction_details.iter().map(|item| {
-        let detail_dict = item.downcast::<PyDict>()?.into_iter();
-        let mut detail_map = HashMap::new();
+    // Convert Python extraction details into Serde JSON Value using the utility function
+    let extraction_details_serde = pylist_to_json(extraction_details)?;
 
-        for (k, v) in detail_dict {
-            let key: String = k.extract()?;
-            let value: Vec<String> = v.extract::<&PyList>()?.iter().map(|item| {
-                item.extract::<String>()
-                    .map_err(|e| pyo3::exceptions::PyTypeError::new_err(format!("Expected a list of strings, got error: {}", e)))
-            }).collect::<PyResult<Vec<String>>>()?;
-            detail_map.insert(key, value);
-        }
-
-        // Convert each detail_map into Serde Value
-        Ok(json!(detail_map))
-    }).collect::<PyResult<Vec<Value>>>()?;
-
-    // Creating a new Tokio runtime for blocking call
+    // Create a new Tokio runtime to run async process_files function
     let rt = runtime::Runtime::new().unwrap();
-    let result = rt.block_on(async {
-        // Make sure to adjust the process_files function to accept Vec<Value>
+    let results = rt.block_on(async {
+        // Call process_files asynchronously with the collected parameters
         process_files(file_paths, extraction_details_serde, num_workers.unwrap_or(5)).await
     }).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error processing files: {}", e)))?;
 
-    Ok(result)
+    // Convert the Serde JSON Value results into JSON strings
+    let json_strings = results.into_iter().map(|val| {
+        to_string(&val).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error converting to JSON string: {}", e)))
+    }).collect::<PyResult<Vec<String>>>()?;
+
+    // Return the JSON strings to Python
+    Ok(json_strings)
 }
 
 #[pymodule]
 fn sheet_excavator(_py: Python, m: &PyModule) -> PyResult<()> {
+    // Register the excel_extract function in the Python module
     m.add_function(wrap_pyfunction!(excel_extract, m)?)?;
     Ok(())
 }
