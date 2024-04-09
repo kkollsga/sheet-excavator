@@ -43,7 +43,6 @@ fn extract_cell_value(sheet: &Range<Data>, cell_address: &str) -> Result<Option<
     }
 }
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
-    println!("Processing file: {}", file_path);
     // Initialize an empty array to hold the result for each extraction_detail
     let mut result = Vec::new();
     let mut final_result = serde_json::Map::new();
