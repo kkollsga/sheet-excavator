@@ -19,6 +19,7 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
         let sem_clone = semaphore.clone();
         // Acquire a permit before spawning the task
         let _permit = sem_clone.acquire_owned().await.expect("Failed to acquire semaphore permit");
+        println!("Permit aquired.");
         futures.push(tokio::spawn(async move {
             let result = process_file(path_str.clone(), details_clone).await;
             result
@@ -39,7 +40,7 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
                 let avg_time_str = format!("{:.2}", avg_time_per_file);
                 let estimated_time_str = format!("{:.2}", estimated_time_left);
 
-                println!("Progress: {}/{} files processed. Average time per file: {} seconds. Estimated time left: {} seconds", processed_files, total_files, avg_time_str, estimated_time_str);
+                println!("Progress: {}/{} files. Estimated time left: {}s. (Avg: {}s", processed_files, total_files, estimated_time_str, avg_time_str);
                 results.push(value);
             },
             Ok(Err(e)) => return Err(e.into()),
