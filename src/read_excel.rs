@@ -117,6 +117,5 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
     // Construct the return value as a JSON object containing the array of sheet names
     // Add the data array to the final result
     final_result.insert("data".to_string(), Value::Array(result));
-
     Ok(Value::Object(final_result)) // Return the constructed JSON object
 }

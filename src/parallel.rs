@@ -4,49 +4,61 @@ use futures::stream::{FuturesUnordered, StreamExt}; // Import FuturesUnordered a
 use serde_json::Value; // Import serde_json::Value
 use crate::read_excel::process_file;
 use anyhow::Result; // Use anyhow::Result for simplified error handling
-use std::time::Instant; // Import Instant for timing
+use std::time::Instant; // Import Instant to measure elapsed time
 
 pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>, num_workers: usize) -> Result<Vec<Value>> {
-    let semaphore = Arc::new(Semaphore::new(num_workers));
+    let semaphore = Arc::new(Semaphore::new(num_workers)); // Wrap Semaphore in an Arc for shared ownership
 
-    let mut futures = FuturesUnordered::new();
-    let total_files = file_paths.len();
-    let mut processed_files = 0;
-    let start_time = Instant::now();
+    let mut futures = FuturesUnordered::new(); // Create a FuturesUnordered collection for managing futures
+    let start_time = Instant::now(); // Record the start time for logging progress
 
-    for path_str in file_paths.iter().cloned() {
-        let details_clone = extraction_details.clone();
-        let sem_clone = semaphore.clone();
-        // Acquire a permit before spawning the task
-        let _permit = sem_clone.acquire_owned().await.expect("Failed to acquire semaphore permit");
-        println!("Permit aquired.");
+    for (_index, path_str) in file_paths.into_iter().enumerate() {
+        let path_str_clone = path_str.clone();
+        let details_clone = extraction_details.clone(); // Clone extraction_details for each async task
+        let sem_clone = semaphore.clone(); // Clone the Arc, not the Semaphore itself
+
+        let permit = sem_clone.acquire_owned().await.unwrap(); // Acquire a permit from the semaphore
+
         futures.push(tokio::spawn(async move {
-            let result = process_file(path_str.clone(), details_clone).await;
+            // Once a permit is acquired, push the task into FuturesUnordered
+            let result = process_file(path_str_clone, details_clone).await;
+            drop(permit); // Release the permit when the task is done
             result
         }));
     }
 
-    let mut results = Vec::new();
+    let total_files = futures.len();
+    let mut results = Vec::with_capacity(total_files);
 
     while let Some(res) = futures.next().await {
+        // Push the successful results into the results vector
         match res {
             Ok(Ok(value)) => {
-                processed_files += 1;
-                let avg_time_per_file = start_time.elapsed().as_secs_f64() / processed_files as f64;
-                let files_left = total_files - processed_files;
-                let estimated_time_left = avg_time_per_file * files_left as f64;
-
-                // Format the average time and estimated time left with two decimal places
-                let avg_time_str = format!("{:.2}", avg_time_per_file);
-                let estimated_time_str = format!("{:.2}", estimated_time_left);
-
-                println!("Progress: {}/{} files. Estimated time left: {}s. (Avg: {}s", processed_files, total_files, estimated_time_str, avg_time_str);
-                results.push(value);
+                results.push(value); // Handle the double Result layer (tokio::spawn + process_file)
+                log_progress(&results, total_files, &start_time); // Log progress after each file is processed
             },
-            Ok(Err(e)) => return Err(e.into()),
-            Err(e) => return Err(anyhow::Error::new(e)),
+            Ok(Err(e)) => return Err(e.into()), // Convert the inner error to the function's error type
+            Err(e) => return Err(anyhow::Error::new(e)), // Convert the JoinError to the function's error type
         }
     }
 
-    Ok(results)
+    println!("All files processed. Total time: {:.2?}", start_time.elapsed()); // Log the completion of all tasks
+    Ok(results) // Return the results if successful
 }
+
+// Function to log the progress of file processing
+fn log_progress(results: &[Value], total_files: usize, start_time: &Instant) {
+    let processed_files = results.len();
+    let files_left = total_files - processed_files;
+    let avg_time_per_file = if processed_files > 0 {
+        start_time.elapsed().as_secs_f64() / processed_files as f64
+    } else {
+        0.0 // Avoid division by zero if no files have been processed yet
+    };
+    let estimated_time_left = avg_time_per_file * files_left as f64;
+    println!(
+        " Progress: {}/{} files. Avg: {:.2}s. Time left: {:.2}s.",
+        processed_files, total_files, estimated_time_left, avg_time_per_file
+    );
+}
+
