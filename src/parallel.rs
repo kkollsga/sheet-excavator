@@ -22,7 +22,9 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
 
         futures.push(tokio::spawn(async move {
             // Once a permit is acquired, push the task into FuturesUnordered
+            println!("Pushing. {}",&path_str);
             let result = process_file(path_str_clone, details_clone).await;
+            println!("Done. {}",&path_str);
             drop(permit); // Release the permit when the task is done
             result
         }));

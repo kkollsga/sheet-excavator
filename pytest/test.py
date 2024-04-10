@@ -6,6 +6,6 @@ extraction_details = [
     {"sheets":["Generell info og kommentarer"], "cells":{"field": "d7", "od-id": "m8"}},
     {"sheets":["Profil_1", "Profil_2"], "cells":{"project_name": "h7"}}
 ]
-results = sheet_excavator.excel_extract(files,extraction_details,10)
+results = sheet_excavator.excel_extract(files,extraction_details,2)
 #print(results)
 print("\n\nRESULTS::::", [json.loads(o) for o in results])
