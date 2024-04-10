@@ -37,6 +37,7 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
         // Push the successful results into the results vector
         match res {
             Ok(Ok(value)) => {
+                println!("Success.");
                 results.push(value); // Handle the double Result layer (tokio::spawn + process_file)
                 log_progress(&results, total_files, &start_time); // Log progress after each file is processed
             },
