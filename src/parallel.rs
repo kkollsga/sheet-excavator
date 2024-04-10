@@ -7,6 +7,7 @@ use anyhow::Result; // Use anyhow::Result for simplified error handling
 use std::time::Instant; // Import Instant to measure elapsed time
 
 pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>, num_workers: usize) -> Result<Vec<Value>> {
+    println!("Processing files!");
     let semaphore = Arc::new(Semaphore::new(num_workers)); // Wrap Semaphore in an Arc for shared ownership
 
     let mut futures = FuturesUnordered::new(); // Create a FuturesUnordered collection for managing futures
