@@ -1,5 +1,6 @@
 use tokio::sync::Semaphore; // Import Semaphore from tokio::sync
 use std::sync::Arc; // Import Arc for creating reference-counted pointers
+use std::io::{self, Write};
 use futures::stream::{FuturesUnordered, StreamExt}; // Import FuturesUnordered and StreamExt for managing and polling futures
 use serde_json::Value; // Import serde_json::Value
 use crate::read_excel::process_file;
@@ -22,9 +23,7 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
 
         futures.push(tokio::spawn(async move {
             // Once a permit is acquired, push the task into FuturesUnordered
-            println!("Pushing. {}",&path_str);
             let result = process_file(path_str_clone, details_clone).await;
-            println!("Done. {}",&path_str);
             drop(permit); // Release the permit when the task is done
             result
         }));
@@ -37,9 +36,9 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
         // Push the successful results into the results vector
         match res {
             Ok(Ok(value)) => {
-                println!("Success.");
                 results.push(value); // Handle the double Result layer (tokio::spawn + process_file)
                 log_progress(&results, total_files, &start_time); // Log progress after each file is processed
+                io::stdout().flush().unwrap();
             },
             Ok(Err(e)) => return Err(e.into()), // Convert the inner error to the function's error type
             Err(e) => return Err(anyhow::Error::new(e)), // Convert the JoinError to the function's error type
