@@ -1,8 +1,10 @@
 use pyo3::types::PyList;
 use pyo3::prelude::*;
+use pyo3::types::PyAny;
 use serde_json::to_string;
 use tokio::runtime;
-
+use pyo3_asyncio::tokio::future_into_py;
+use anyhow::Error as AnyhowError;
 mod parallel;
 mod read_excel;
 use parallel::process_files;
@@ -10,30 +12,37 @@ mod utils; // Import the utils module
 use utils::pylist_to_json; // Import the conversion function
 
 #[pyfunction]
-fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<Vec<String>> {
-    // Extract file paths from Python list to Rust Vec<String>
+fn excel_extract(py: Python, callback: PyObject, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<()> {
     let file_paths: Vec<String> = file_paths.iter().map(|p| {
         p.extract::<String>()
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error extracting string: {}", e)))
     }).collect::<PyResult<Vec<String>>>()?;
+    
     let extraction_details_serde = pylist_to_json(extraction_details)?;
 
-    // Create a new Tokio runtime to run async process_files function
-    let rt = runtime::Runtime::new().unwrap();
-    let results = rt.block_on(async {
-        let (results, mut progress_receiver) = process_files(file_paths, extraction_details_serde, num_workers.unwrap_or(5)).await?;
+    // Use the existing runtime or create a new one
+    pyo3_asyncio::tokio::get_runtime().block_on(async move {
+        let (results, mut progress_receiver) = process_files(file_paths, extraction_details_serde, num_workers.unwrap_or(5)).await
+    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error processing files: {}", e)))?;
+
         while let Some(progress) = progress_receiver.recv().await {
-            println!("Progress: {}", progress);
+            // Call the provided Python callback function asynchronously with the progress
+            let _ = Python::with_gil(|py| {
+                let _call_result = callback.call1(py, (progress,));
+            });
         }
-        Ok(results)
-    }).map_err(|e: anyhow::Error| pyo3::exceptions::PyRuntimeError::new_err(format!("Error processing files: {}", e)))?;
 
+        // Send the final results as a JSON string to the callback
+        let json_results: Vec<String> = results.into_iter().map(|val| {
+            to_string(&val).unwrap() // Assuming no errors for simplicity
+        }).collect();
 
-    // Convert the Serde JSON Value results into JSON strings
-    let json_strings = results.into_iter().map(|val| {
-        to_string(&val).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error converting to JSON string: {}", e)))
-    }).collect::<PyResult<Vec<String>>>()?;
-    Ok(json_strings)
+        Python::with_gil(|py| {
+            let _call_result = callback.call1(py, ("done", json_results));
+        });
+
+        Ok(())
+    })
 }
 
 #[pymodule]

@@ -7,10 +7,15 @@ extraction_details = [
     {"sheets":["Profil_1", "Profil_2"], "cells":{"project_name": "h7"}}
 ]
 
+
+
 import asyncio
 
+def progress_callback(message):
+    print(f"Progress Update: {message}")
+
 async def main():
-    results = sheet_excavator.excel_extract(files,extraction_details,5)
-    print("\n\nRESULTS::::", [json.loads(o) for o in results])
+    await sheet_excavator.excel_extract(progress_callback, files, extraction_details, 10)
+
+# Run the main coroutine
 asyncio.run(main())
-#print(results)

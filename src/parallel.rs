@@ -59,7 +59,7 @@ async fn log_progress(results: &[Value], total_files: usize, start_time: &Instan
     };
     let estimated_time_left = avg_time_per_file * files_left as f64;
     let msg = format!(
-        " Progress: {}/{} files. Avg: {:.2}s. Time left: {:.2}s.",
+        " {}/{} files. Avg: {:.2}s. Time left: {:.2}s.",
         processed_files, total_files, estimated_time_left, avg_time_per_file
     );
     progress_sender.send(msg).await.unwrap();
