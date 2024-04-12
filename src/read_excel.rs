@@ -93,19 +93,20 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             // Initialize an object to hold the key-value pairs for this sheet
             let mut sheet_obj = serde_json::Map::new();
 
-            // Load the sheet into memory
-            let sheet = workbook
-                .worksheet_range(sheet_name)
-                .map_err(|e| Error::msg(format!("Failed to access sheet '{}': {}", sheet_name, e)))?;
             // Assuming you're doing something with sheet_names_vec here
-        
-            if let Some(cell_map) = &cell_pairs {
-                for (key, val) in cell_map {
-                    if let Some(extracted_value) = extract_cell_value(&sheet, val)? {
-                        // Insert the key-value pair into the sheet object
-                        sheet_obj.insert(key.clone(), extracted_value);
+            if let Ok(sheet) = workbook.worksheet_range(sheet_name) {
+                if let Some(cell_map) = &cell_pairs {
+                    for (key, val) in cell_map {
+                        if let Some(extracted_value) = extract_cell_value(&sheet, val)? {
+                            // Insert the key-value pair into the sheet object
+                            sheet_obj.insert(key.clone(), extracted_value);
+                        }
                     }
                 }
+            } else {
+                // Optionally log or handle the error if needed, then continue to the next sheet
+                println!("Failed to access sheet '{}', skipping.", sheet_name);
+                continue;
             }
     
             // Add the sheet object to the extraction_result object
