@@ -5,9 +5,9 @@ use anyhow::{Result, Error};
 use crate::utils::single_cells;
 
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
-    let mut results = Vec::new();
-    let mut final_result = serde_json::Map::new();
-    final_result.insert("file".to_string(), Value::String(file_path.clone()));
+    let mut results = serde_json::Map::new();
+    results.insert("file".to_string(), Value::String(file_path.clone()));
+    results.insert("data".to_string(), Value::Array(Vec::new()));  // Initialize "data" as an empty array
 
     for extract in extraction_details.iter() {
         let map = match extract {
@@ -70,11 +70,13 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 extraction_result.insert(sheet_name.to_string(), Value::Object(cells_object));
             }
         }
+
         if !extraction_result.is_empty() {
-            results.push(Value::Object(extraction_result));
+            if let Some(Value::Array(data)) = results.get_mut("data") {
+                data.push(Value::Object(extraction_result));
+            }
         }
     }
 
-    final_result.insert("data".to_string(), Value::Array(results));
-    Ok(Value::Object(final_result))
+    Ok(Value::Object(results))
 }
