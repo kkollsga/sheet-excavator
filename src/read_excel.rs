@@ -2,7 +2,7 @@ use calamine::{Reader, open_workbook_auto};
 use serde_json::{Map, Value};
 use anyhow::{Result, Error};
 
-use crate::utils::single_cells;
+use crate::utils::{single_cells, multirow_patterns};
 
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
     let mut results = serde_json::Map::new();
@@ -43,8 +43,6 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             .collect::<Result<Vec<(String, Map<String, Value>)>, Error>>()?;
 
         let mut workbook = open_workbook_auto(&file_path).map_err(Error::new)?;
-
-        let mut extraction_result = Map::new();
         for sheet_name in &sheet_names {
             let sheet = match workbook.worksheet_range(sheet_name) {
                 Ok(sheet) => sheet,
@@ -53,30 +51,38 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                     continue;
                 }
             };
-
+            let mut sheet_results = Map::new();
             for (function, instructions) in &extractions {
                 let cells_object = match function.as_str() {
                     "single_cells" => single_cells::extract_values(&sheet, &instructions),
-                    "multiple_cells" => {
-                        println!("multicell: {:?}", instructions);
-                        continue;  // Placeholder for actual logic
-                    },
+                    "multirow_patterns" => multirow_patterns::extract_rows(&sheet, &instructions),
                     _ => {
                         println!("Unsupported function type '{}'", function);
                         continue;
                     }
                 }?;
 
-                extraction_result.insert(sheet_name.to_string(), Value::Object(cells_object));
+                // Check if the function key exists and append to it or create a new array if it doesn't
+                let entry = sheet_results
+                    .entry(function.clone())
+                    .or_insert_with(|| Value::Array(Vec::new()));
+                if let Value::Array(array) = entry {
+                    array.push(Value::Object(cells_object));
+                }
+            }
+
+            if !sheet_results.is_empty() {
+                // Wrap sheet results in an object with the sheet name as the key
+                let mut sheet_data = Map::new();
+                sheet_data.insert(sheet_name.to_string(), Value::Object(sheet_results));
+
+                // Append to the data array under results
+                if let Some(Value::Array(data)) = results.get_mut("data") {
+                    data.push(Value::Object(sheet_data));
+                }
             }
         }
 
-        if !extraction_result.is_empty() {
-            if let Some(Value::Array(data)) = results.get_mut("data") {
-                data.push(Value::Object(extraction_result));
-            }
-        }
     }
-
     Ok(Value::Object(results))
 }

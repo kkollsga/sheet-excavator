@@ -5,7 +5,9 @@ use pyo3::prelude::*;
 use serde_json::{Value, Map};
 
 pub mod single_cells;
+pub mod multirow_patterns;
 pub mod conversions;
+pub mod manipulations;
 
 fn pydict_to_json_value(pydict: &PyDict) -> PyResult<Value> {
     let mut map = Map::new(); // Use serde_json::Map directly

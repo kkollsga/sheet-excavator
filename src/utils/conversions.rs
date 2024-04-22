@@ -38,3 +38,12 @@ pub fn address_to_row_col(cell_address: &str) -> Result<(u32, u32), Error> {
     // Adjust for 0-based indexing used by Calamine
     Ok((row-1, col))
 }
+
+pub fn column_name_to_index(column_name: &str) -> Result<u32, Error> {
+    let mut col_idx = 0;
+    for (i, char) in column_name.chars().rev().enumerate() {
+        let digit = char as u32 - 'A' as u32 + 1;
+        col_idx += digit * 26u32.pow(i as u32);
+    }
+    Ok(col_idx - 1)  // converting to 0-based index
+}
