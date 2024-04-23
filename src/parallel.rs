@@ -49,7 +49,7 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
     while let Some(res) = futures.next().await {
         match res {
             Ok(Ok(value)) => {
-                if let Some(file_path) = value.get("file").and_then(|v| v.as_str()) {
+                if let Some(file_path) = value.get("filepath").and_then(|v| v.as_str()) {
                     let base_filename = extract_filename(file_path);
                     let mut filename_key = base_filename.clone();
                     let mut counter = 1;

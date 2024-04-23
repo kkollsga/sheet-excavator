@@ -6,8 +6,7 @@ use crate::utils::{single_cells, multirow_patterns};
 
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
     let mut results = serde_json::Map::new();
-    results.insert("file".to_string(), Value::String(file_path.clone()));
-    results.insert("data".to_string(), Value::Object(Map::new()));  // Initialize "data" as an empty array
+    results.insert("filepath".to_string(), Value::String(file_path.clone()));
 
     for extract in extraction_details.iter() {
         let map = match extract {
@@ -91,19 +90,16 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 }
             }
 
-            if let Some(Value::Object(data)) = results.get_mut("data") {
-                if let Some(existing_data) = data.get_mut(&sheet_name.to_string()) {
-                    if let Value::Object(existing_map) = existing_data {
-                        for (key, value) in sheet_results {
-                            existing_map.insert(key, value); // Merge new data into existing map
-                        }
-                    }
-                } else {
-                    data.insert(sheet_name.to_string(), Value::Object(sheet_results)); // Add new sheet results if not present
+            if let Some(Value::Object(existing_map)) = results.get_mut(&sheet_name.to_string()) {
+                // If sheet_name already exists, merge new sheet results into existing map
+                for (key, value) in sheet_results {
+                    existing_map.insert(key, value);
                 }
+            } else {
+                // Add new sheet results if not present
+                results.insert(sheet_name.to_string(), Value::Object(sheet_results));
             }
         }
-
     }
     Ok(Value::Object(results))
 }
