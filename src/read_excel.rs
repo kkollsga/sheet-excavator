@@ -7,7 +7,7 @@ use crate::utils::{single_cells, multirow_patterns};
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
     let mut results = serde_json::Map::new();
     results.insert("file".to_string(), Value::String(file_path.clone()));
-    results.insert("data".to_string(), Value::Array(Vec::new()));  // Initialize "data" as an empty array
+    results.insert("data".to_string(), Value::Object(Map::new()));  // Initialize "data" as an empty array
 
     for extract in extraction_details.iter() {
         let map = match extract {
@@ -78,26 +78,28 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                         sheet_results.insert(unique_key, value);
                     }
                 } else {
-                    // Insert the cells_object under the key specified by label
-                    // Check if the key already exists and append suffix if needed
-                    let mut unique_label = label.clone();
-                    let mut counter = 1;
-                    while sheet_results.contains_key(&unique_label) {
-                        unique_label = format!("{}_{}", label, counter);
-                        counter += 1;
+                    // Merge cells_object into sheet_results under the specified label
+                    if let Some(Value::Object(existing_map)) = sheet_results.get_mut(&label.to_string()) {
+                        // If the label already exists, merge the new cells_object into the existing object
+                        for (key, value) in cells_object {
+                            existing_map.insert(key, value); // Update existing keys or add new keys
+                        }
+                    } else {
+                        // If the label does not exist, simply add it
+                        sheet_results.insert(label.clone(), Value::Object(cells_object));
                     }
-                    sheet_results.insert(unique_label, Value::Object(cells_object));
                 }
             }
 
-            if !sheet_results.is_empty() {
-                // Wrap sheet results in an object with the sheet name as the key
-                let mut sheet_data = Map::new();
-                sheet_data.insert(sheet_name.to_string(), Value::Object(sheet_results));
-
-                // Append to the data array under results
-                if let Some(Value::Array(data)) = results.get_mut("data") {
-                    data.push(Value::Object(sheet_data));
+            if let Some(Value::Object(data)) = results.get_mut("data") {
+                if let Some(existing_data) = data.get_mut(&sheet_name.to_string()) {
+                    if let Value::Object(existing_map) = existing_data {
+                        for (key, value) in sheet_results {
+                            existing_map.insert(key, value); // Merge new data into existing map
+                        }
+                    }
+                } else {
+                    data.insert(sheet_name.to_string(), Value::Object(sheet_results)); // Add new sheet results if not present
                 }
             }
         }
