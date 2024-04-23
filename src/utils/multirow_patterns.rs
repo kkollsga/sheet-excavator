@@ -34,9 +34,9 @@ pub fn extract_rows(sheet: &Range<Data>, instructions: &Map<String, Value>) -> R
         let unique_id = manipulations::extract_cell_value(sheet, row, unique_id_index)?;
         if let Some(unique_id) = unique_id {
             if unique_id != Value::Null {
-                for (column_index, column_name) in columns {
-                    let col = conversions::column_name_to_index(column_index)?;
-                    let column_name_str = column_name.as_str().unwrap_or_default();
+                for (column_name, column_index) in columns {
+                    let col = conversions::column_name_to_index(column_index.as_str().unwrap_or_default())?;
+                    let column_name_str = column_name;
                     let value = manipulations::extract_cell_value(sheet, row, col)?;
         
                     if let Some(value) = value {
