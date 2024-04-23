@@ -45,7 +45,14 @@ pub fn extract_rows(sheet: &Range<Data>, instructions: &Map<String, Value>) -> R
                         row_data.insert(column_name_str.to_string(), Value::Null);
                     }
                 }
-                results.insert(unique_id.to_string(), Value::Object(row_data.clone()));
+
+                let mut unique_key = unique_id.to_string();
+                let mut counter = 1;
+                while results.contains_key(&unique_key) {
+                    unique_key = format!("{}_{}", unique_id.to_string(), counter);
+                    counter += 1;
+                }
+                results.insert(unique_key, Value::Object(row_data.clone()));
             }
         }
     }

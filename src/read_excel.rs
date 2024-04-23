@@ -34,13 +34,17 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                     .and_then(|f| f.as_str())
                     .ok_or_else(|| Error::msg("Missing 'function' key"))?
                     .to_string();
+                let function_label = obj.get("label")
+                    .and_then(|f| f.as_str())
+                    .unwrap_or("") // Provide "" as default if 'label' is missing
+                    .to_string();
                 let instructions = obj.get("instructions")
                     .and_then(|i| i.as_object())
                     .cloned()
                     .ok_or_else(|| Error::msg("Missing 'instructions' key"))?;
-                Ok((function, instructions))
+                Ok((function, function_label, instructions))
             })
-            .collect::<Result<Vec<(String, Map<String, Value>)>, Error>>()?;
+            .collect::<Result<Vec<(String, String, Map<String, Value>)>, Error>>()?;
 
         let mut workbook = open_workbook_auto(&file_path).map_err(Error::new)?;
         for sheet_name in &sheet_names {
@@ -52,7 +56,7 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 }
             };
             let mut sheet_results = Map::new();
-            for (function, instructions) in &extractions {
+            for (function, label, instructions) in &extractions {
                 let cells_object = match function.as_str() {
                     "single_cells" => single_cells::extract_values(&sheet, &instructions),
                     "multirow_patterns" => multirow_patterns::extract_rows(&sheet, &instructions),
@@ -62,12 +66,27 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                     }
                 }?;
 
-                // Check if the function key exists and append to it or create a new array if it doesn't
-                let entry = sheet_results
-                    .entry(function.clone())
-                    .or_insert_with(|| Value::Array(Vec::new()));
-                if let Value::Array(array) = entry {
-                    array.push(Value::Object(cells_object));
+                if label.is_empty() {
+                    // If label is empty, merge cells_object into sheet_results with duplicate handling
+                    for (key, value) in cells_object {
+                        let mut unique_key = key.clone();
+                        let mut counter = 1;
+                        while sheet_results.contains_key(&unique_key) {
+                            unique_key = format!("{}_{}", key, counter);
+                            counter += 1;
+                        }
+                        sheet_results.insert(unique_key, value);
+                    }
+                } else {
+                    // Insert the cells_object under the key specified by label
+                    // Check if the key already exists and append suffix if needed
+                    let mut unique_label = label.clone();
+                    let mut counter = 1;
+                    while sheet_results.contains_key(&unique_label) {
+                        unique_label = format!("{}_{}", label, counter);
+                        counter += 1;
+                    }
+                    sheet_results.insert(unique_label, Value::Object(cells_object));
                 }
             }
 
