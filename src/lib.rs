@@ -10,30 +10,24 @@ mod utils; // Import the utils module
 use utils::pylist_to_json; // Import the conversion function
 
 #[pyfunction]
-fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<Vec<String>> {
-    // Extract file paths from Python list to Rust Vec<String>
+fn excel_extract(_py: Python, file_paths: &PyList, extraction_details: &PyList, num_workers: Option<usize>) -> PyResult<String> {
     let file_paths: Vec<String> = file_paths.iter().map(|p| {
         p.extract::<String>()
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error extracting string: {}", e)))
     }).collect::<PyResult<Vec<String>>>()?;
 
-    // Convert Python extraction details into Serde JSON Value using the utility function
     let extraction_details_serde = pylist_to_json(extraction_details)?;
 
-    // Create a new Tokio runtime to run async process_files function
     let rt = runtime::Runtime::new().unwrap();
     let results = rt.block_on(async {
-        // Call process_files asynchronously with the collected parameters
         process_files(file_paths, extraction_details_serde, num_workers.unwrap_or(5)).await
     }).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error processing files: {}", e)))?;
 
-    // Convert the Serde JSON Value results into JSON strings
-    let json_strings = results.into_iter().map(|val| {
-        to_string(&val).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error converting to JSON string: {}", e)))
-    }).collect::<PyResult<Vec<String>>>()?;
+    // Serialize the entire Map<String, Value> into one JSON string
+    let json_string = to_string(&results)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Error converting results to JSON string: {}", e)))?;
 
-    // Return the JSON strings to Python
-    Ok(json_strings)
+    Ok(json_string)
 }
 
 #[pymodule]

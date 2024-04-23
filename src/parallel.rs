@@ -1,55 +1,71 @@
 use tokio::sync::Semaphore; // Import Semaphore from tokio::sync
-use std::sync::Arc; // Import Arc for creating reference-counted pointers
+use std::{sync::Arc, path::Path, time::Instant}; // Import Arc for creating reference-counted pointers
 use futures::stream::{FuturesUnordered, StreamExt}; // Import FuturesUnordered and StreamExt for managing and polling futures
-use serde_json::Value; // Import serde_json::Value
+use serde_json::{Value, Map}; // Import serde_json::Value
 use crate::read_excel::process_file;
-use anyhow::Result; // Use anyhow::Result for simplified error handling
-use std::time::Instant; // Import Instant to measure elapsed time
+use anyhow::{Result, Error};// Use anyhow::Result for simplified error handling
 
-pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>, num_workers: usize) -> Result<Vec<Value>> {
+
+// Helper function to extract the base filename without extension
+fn extract_filename(path: &str) -> String {
+    Path::new(path)
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_string()
+}
+
+pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>, num_workers: usize) -> Result<Map<String, Value>, Error> {
     println!("Processing files!");
-    let semaphore = Arc::new(Semaphore::new(num_workers)); // Wrap Semaphore in an Arc for shared ownership
+    let semaphore = Arc::new(Semaphore::new(num_workers));
 
-    let mut futures = FuturesUnordered::new(); // Create a FuturesUnordered collection for managing futures
-    let start_time = Instant::now(); // Record the start time for logging progress
+    let mut futures = FuturesUnordered::new();
+    let start_time = Instant::now();
     let total = file_paths.len();
+
     for (index, path_str) in file_paths.into_iter().enumerate() {
         let path_str_clone = path_str.clone();
-        let details_clone = extraction_details.clone(); // Clone extraction_details for each async task
-        let sem_clone = semaphore.clone(); // Clone the Arc, not the Semaphore itself
+        let details_clone = extraction_details.clone();
+        let sem_clone = semaphore.clone();
 
-        let permit = sem_clone.acquire_owned().await.unwrap(); // Acquire a permit from the semaphore
+        let permit = sem_clone.acquire_owned().await.unwrap();
 
         futures.push(tokio::spawn(async move {
-            // Once a permit is acquired, push the task into FuturesUnordered
             let result = process_file(path_str_clone, details_clone).await;
-            let files_left = total - index+1;
+            let files_left = total - index + 1;
             let avg_time_per_file = if index > 0 {
                 start_time.elapsed().as_secs_f64() / index as f64
             } else {
-                0.0 // Avoid division by zero if no files have been processed yet
+                0.0
             };
             let estimated_time_left = avg_time_per_file * files_left as f64;
             println!("Progress: {}/{} files. Avg: {:.2}s. Time left: {:.2}s.", index, total, avg_time_per_file, estimated_time_left);
-            drop(permit); // Release the permit when the task is done
+            drop(permit);
             result
         }));
     }
 
-    let total_files = futures.len();
-    let mut results = Vec::with_capacity(total_files);
-
+    let mut results = Map::new();
     while let Some(res) = futures.next().await {
-        // Push the successful results into the results vector
         match res {
             Ok(Ok(value)) => {
-                results.push(value); // Handle the double Result layer (tokio::spawn + process_file)
+                if let Some(file_path) = value.get("file").and_then(|v| v.as_str()) {
+                    let base_filename = extract_filename(file_path);
+                    let mut filename_key = base_filename.clone();
+                    let mut counter = 1;
+                    // Ensure the key is unique by appending a counter if needed
+                    while results.contains_key(&filename_key) {
+                        filename_key = format!("{}_{}", base_filename, counter);
+                        counter += 1;
+                    }
+                    results.insert(filename_key, value);
+                }
             },
             Ok(Err(e)) => return Err(e.into()), // Convert the inner error to the function's error type
             Err(e) => return Err(anyhow::Error::new(e)), // Convert the JoinError to the function's error type
         }
     }
 
-    println!("All files processed. Total time: {:.2?}", start_time.elapsed()); // Log the completion of all tasks
-    Ok(results) // Return the results if successful
+    println!("All files processed. Total time: {:.2?}", start_time.elapsed());
+    Ok(results)
 }

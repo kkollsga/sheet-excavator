@@ -16,6 +16,4 @@ extraction_details = [
 ]
 
 results = sheet_excavator.excel_extract(files, extraction_details, 10)
-for r in results:
-    # Use json.dumps to print each result with indentation for better readability
-    print(json.dumps(json.loads(r), indent=4))
+print(json.dumps(json.loads(results), indent=4))

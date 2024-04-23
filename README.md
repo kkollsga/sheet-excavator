@@ -21,12 +21,15 @@ Windows AMD64 system
 ### Install with pip
 *To install Sheet Excavator, run the following command in your terminal:*
 ```
-pip install https://github.com/kkollsga/sheet_excavator/blob/main/wheels/sheet_excavator-0.1.16-cp312-none-win_amd64.whl?raw=true
+pip install https://github.com/kkollsga/sheet_excavator/blob/main/wheels/sheet_excavator-0.1.17-cp312-none-win_amd64.whl?raw=true
 ```
 *To upgrade an already installed version of Sheet Excavator, use:*
 ```
-pip install --upgrade https://github.com/kkollsga/sheet_excavator/blob/main/wheels/sheet_excavator-0.1.16-cp312-none-win_amd64.whl?raw=true
+pip install --upgrade https://github.com/kkollsga/sheet_excavator/blob/main/wheels/sheet_excavator-0.1.17-cp312-none-win_amd64.whl?raw=true
 ```
 
 ## Usage
 Detailed documentation on how to use Sheet Excavator will be provided here or linked to a documentation site.
+
+## License
+Sheet Excavator is released under the MIT License. See the LICENSE file for more details.
