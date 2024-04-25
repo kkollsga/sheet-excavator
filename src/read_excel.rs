@@ -1,8 +1,16 @@
 use calamine::{Reader, open_workbook_auto};
 use serde_json::{Map, Value};
 use anyhow::{Result, Error};
+use std::iter::Iterator;
+use crate::utils::{conversions, manipulations, single_cells, multirow_patterns, match_sheet_names};
 
-use crate::utils::{single_cells, multirow_patterns};
+fn extend_unique<T: PartialEq>(vec: &mut Vec<T>, value: T) {
+    if !vec.contains(&value) {
+        vec.push(value);
+    }
+}
+
+
 
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
     let mut results = serde_json::Map::new();
@@ -14,13 +22,40 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             _ => return Err(Error::msg("Extraction detail should be a JSON object")),
         };
 
-        let sheet_names = map
-            .get("sheets")
-            .and_then(|sheets| sheets.as_array())
-            .ok_or_else(|| Error::msg("Missing or invalid \"sheets\" key in extraction details"))?
-            .iter()
-            .map(|name| name.as_str().ok_or_else(|| Error::msg("\"sheets\" array should contain only strings")))
-            .collect::<Result<Vec<&str>, Error>>()?;
+        let mut workbook = open_workbook_auto(&file_path).map_err(Error::new)?;
+        let mut sheet_names: Vec<String> = Vec::new();
+        if let Some(sheets) = map.get("sheets") {
+            if let Some(sheets_array) = sheets.as_array() {
+                let skip_sheets = map.get("skip_sheets")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().cloned().collect::<Vec<_>>())
+                    .unwrap_or_else(|| Vec::new());
+                
+                for sheet in sheets_array {
+                    if let Some(sheet_str) = sheet.as_str() {
+                        if sheet_str.contains('*') {
+                            for sheet_name in match_sheet_names(&workbook.sheet_names().to_vec(), sheet_str) {
+                                if !skip_sheets.iter().any(|s| s == &sheet_name) {
+                                    extend_unique(&mut sheet_names, sheet_name);
+                                }
+                            }
+                        } else {
+                            let sheet_name = sheet_str.to_string();
+                            if !skip_sheets.iter().any(|s| s == &sheet_name) {
+                                extend_unique(&mut sheet_names, sheet_name);
+                            }
+                        }
+                    } else {
+                        return Err(Error::msg("Invalid sheet name"));
+                    }
+                }
+            } else {
+                return Err(Error::msg("Invalid \"sheets\" value in extraction details"));
+            }
+        } else {
+            return Err(Error::msg("Missing \"sheets\" key in extraction details"));
+        }
+        let break_if_null = map.get("break_if_null").and_then(|f| f.as_str());
 
         let extractions = map
             .get("extractions")
@@ -45,7 +80,7 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             })
             .collect::<Result<Vec<(String, String, Map<String, Value>)>, Error>>()?;
 
-        let mut workbook = open_workbook_auto(&file_path).map_err(Error::new)?;
+        
         for sheet_name in &sheet_names {
             let sheet = match workbook.worksheet_range(sheet_name) {
                 Ok(sheet) => sheet,
@@ -54,6 +89,23 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                     continue;
                 }
             };
+            if let Some(break_if_null_value) = break_if_null {
+                let (row, col) = conversions::address_to_row_col(break_if_null_value)?;
+                match manipulations::extract_cell_value(&sheet, row, col) {
+                    Ok(Some(cell_value)) => {
+                        if cell_value.is_null() {
+                            println!("Break condition met at cell {:?}", break_if_null_value);
+                            break; // Break out of the sheet loop
+                        }
+                    },
+                    Ok(None) => {
+                        println!("Cell {:?} is null", break_if_null_value);
+                    },
+                    Err(e) => return Err(e),
+                }
+            }
+
+
             let mut sheet_results = Map::new();
             for (function, label, instructions) in &extractions {
                 let cells_object = match function.as_str() {

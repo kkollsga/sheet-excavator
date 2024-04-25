@@ -48,3 +48,26 @@ pub fn pylist_to_json(pylist: &PyList) -> PyResult<Vec<Value>> {
         pydict_to_json_value(detail_dict)
     }).collect()
 }
+
+
+pub fn match_sheet_names(sheet_names: &[String], pattern: &str) -> Vec<String> {
+    let (start, end) = match pattern.find('*') {
+        Some(index) => {
+            let (start, end) = pattern.split_at(index);
+            let end = end.trim_start_matches('*');
+            (start, end)
+        },
+        None => ("", ""), // Default start and end if asterisk is not found
+    };
+
+    sheet_names
+        .iter()
+        .filter_map(|sheet_name| {
+            if sheet_name.starts_with(start) && sheet_name.ends_with(end) {
+                Some(sheet_name.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
