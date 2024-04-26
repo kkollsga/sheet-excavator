@@ -34,15 +34,44 @@ pub fn extract_rows(sheet: &Range<Data>, instructions: &Map<String, Value>) -> R
         let unique_id = manipulations::extract_cell_value(sheet, row, unique_id_index)?;
         if let Some(unique_id) = unique_id {
             if unique_id != Value::Null {
-                for (column_name, column_index) in columns {
-                    let col = conversions::column_name_to_index(column_index.as_str().unwrap_or_default())?;
-                    let column_name_str = column_name;
-                    let value = manipulations::extract_cell_value(sheet, row, col)?;
-        
-                    if let Some(value) = value {
-                        row_data.insert(column_name_str.to_string(), value);
-                    } else {
-                        row_data.insert(column_name_str.to_string(), Value::Null);
+                for (column_name, column_index_value) in columns {
+                    let column_values = match column_index_value {
+                        Value::Array(arr) => arr.clone(),
+                        Value::String(s) => vec![Value::String(s.clone())],
+                        _ => return Err(Error::msg("Invalid column specification")),
+                    };
+                    if column_values.len() == 1 {
+                        let column_index_str = match column_values.first() {
+                            Some(Value::String(s)) => s.clone(),
+                            _ => return Err(Error::msg("Invalid column specification")),
+                        };
+
+                        let col = conversions::column_name_to_index(&column_index_str)?;
+                        let value = manipulations::extract_cell_value(sheet, row, col)?;
+
+                        if let Some(value) = value {
+                            row_data.insert(column_name.clone(), value);
+                        } else {
+                            row_data.insert(column_name.clone(), Value::Null);
+                        }
+                    } else if !column_values.is_empty() {
+                        let mut cell_values = Vec::new();
+                        for column_index_value in column_values {
+                            let column_index_str = match column_index_value {
+                                Value::String(s) => s,
+                                _ => return Err(Error::msg("Invalid column specification")),
+                            };
+
+                            let col = conversions::column_name_to_index(&column_index_str)?;
+                            let value = manipulations::extract_cell_value(sheet, row, col)?;
+
+                            if let Some(value) = value {
+                                if !value.is_null() {
+                                    cell_values.push(value);
+                                }
+                            }
+                        }
+                        row_data.insert(column_name.clone(), Value::Array(cell_values));
                     }
                 }
 

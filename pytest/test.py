@@ -12,7 +12,10 @@ extraction_details = [
         {"function":"single_cells", "label": "single", "instructions":{"field": "d7", "od-id": "m8"}},
         {"function":"multirow_patterns", "label": "deposits", "instructions":{"start_row":28, "end_row":44, "unique_id":"B","columns":{"Deposit":"B", "Discovery_well":"C", "Description":"D", "Oil_low":"E", "Oil_base":"F", "Oil_high":"G", "Cond_low":"H", "Cond_base":"I", "Cond_high":"J", "AssGass_low":"K", "AssGass_base":"L", "AssGass_high":"M", "FriGass_low":"N", "FriGass_base":"O","FriGass_high":"P"}}},
     ]},
-    {"sheets":["Profil_*"], "extractions": [{"function":"single_cells", "label": "single","instructions":{"project_name": "h7"}}], "skip_sheets":["Profil_Total"], "break_if_null": "h7"}
+    {"sheets":["Profil_*"], "extractions": [
+        {"function":"single_cells", "label": "single","instructions":{"project_name": ["h7","h8", "h9", "h10", "h11"]}},
+        {"function":"multirow_patterns", "label": "projects","instructions":{"start_row":7, "end_row":25, "unique_id":"H","columns":{"Deposit":"H","Oil":"M","NGL":"P","Gas":"S", "Cond":"V", "Deposits":["X","Y","Z","AA"]}}}
+    ], "skip_sheets":["Profil_Total"], "break_if_null": "h7"}
 ]
 
 results = sheet_excavator.excel_extract(files, extraction_details, 10)

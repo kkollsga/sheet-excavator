@@ -56,7 +56,6 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             return Err(Error::msg("Missing \"sheets\" key in extraction details"));
         }
         let break_if_null = map.get("break_if_null").and_then(|f| f.as_str());
-
         let extractions = map
             .get("extractions")
             .and_then(|extr| extr.as_array())
@@ -94,7 +93,6 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 match manipulations::extract_cell_value(&sheet, row, col) {
                     Ok(Some(cell_value)) => {
                         if cell_value.is_null() {
-                            println!("Break condition met at cell {:?}", break_if_null_value);
                             break; // Break out of the sheet loop
                         }
                     },

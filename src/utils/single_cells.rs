@@ -6,20 +6,40 @@ use crate::utils::{conversions, manipulations};
 pub fn extract_values(sheet: &Range<Data>, instructions: &Map<String, Value>) -> Result<Map<String, Value>, Error> {
     let mut results = Map::new();
     for (key, value) in instructions {
-        let (row, col) = if let Some(cell_address) = value.as_str() {
-            conversions::address_to_row_col(cell_address)?
-        } else if let Some(obj) = value.as_object() {
-            let row = obj.get("row").and_then(Value::as_u64).ok_or_else(|| Error::msg("Missing 'row'"))? as u32;
-            let col = obj.get("col").and_then(Value::as_u64).ok_or_else(|| Error::msg("Missing 'col'"))? as u32;
-            (row, col)
-        } else {
-            return Err(Error::msg("Invalid or missing row/column specification"));
-        };
-
-        match manipulations::extract_cell_value(sheet, row, col) {
-            Ok(Some(cell_value)) => { results.insert(key.clone(), cell_value); },
-            Ok(None) => { results.insert(key.clone(), Value::Null); },
-            Err(e) => return Err(e),
+        match value {
+            Value::Array(addresses) => {
+                let mut address_values = Vec::new();
+                for address_value in addresses {
+                    let (row, col) = match address_value {
+                        Value::String(cell_address) => conversions::address_to_row_col(&cell_address)?,
+                        Value::Object(obj) => {
+                            let row = obj.get("row").and_then(Value::as_u64).ok_or_else(|| Error::msg("Missing 'row'"))? as u32;
+                            let col = obj.get("col").and_then(Value::as_u64).ok_or_else(|| Error::msg("Missing 'col'"))? as u32;
+                            (row, col)
+                        }
+                        _ => return Err(Error::msg("Invalid or missing row/column specification")),
+                    };
+                    match manipulations::extract_cell_value(sheet, row, col) {
+                        Ok(Some(cell_value)) => {
+                            if !cell_value.is_null() {
+                                address_values.push(cell_value);
+                            }
+                        }
+                        Ok(None) => (), // Ignore null values
+                        Err(e) => return Err(e),
+                    }
+                }
+                results.insert(key.clone(), Value::Array(address_values));
+            }
+            Value::String(cell_address) => {
+                let (row, col) = conversions::address_to_row_col(&cell_address)?;
+                match manipulations::extract_cell_value(sheet, row, col) {
+                    Ok(Some(cell_value)) => { results.insert(key.clone(), cell_value); }
+                    Ok(None) => { results.insert(key.clone(), Value::Null); }
+                    Err(e) => return Err(e),
+                }
+            }
+            _ => return Err(Error::msg("Invalid or missing row/column specification")),
         }
     }
     Ok(results)
