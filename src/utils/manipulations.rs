@@ -13,7 +13,10 @@ pub fn extract_cell_value(sheet: &Range<Data>, row: u32, col: u32) -> Result<Opt
                                            .map(Some)
                                            .ok_or_else(|| Error::msg("Invalid float value")),
             Data::Bool(bool_val) => Ok(Some(Value::Bool(*bool_val))),
-            Data::String(str_val) => Ok(Some(Value::String(str_val.to_string()))),
+            Data::String(str_val) => {
+                let trimmed_str = str_val.trim().to_string();
+                Ok(Some(Value::String(trimmed_str)))
+            },
             Data::Error(_) => Err(Error::msg("Error in cell")),
             Data::DateTime(dt) => Ok(Some(Value::String(conversions::excel_datetime(dt.as_f64())?))),
             Data::DurationIso(duration_iso) => Ok(Some(Value::String(duration_iso.to_string()))),
