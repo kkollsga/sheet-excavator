@@ -127,7 +127,8 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                             existing_map.insert(key, value);
                         }
                     } else {
-                        sheet_results.insert(label.clone(), Value::Object(cells_object));
+                        let value: Value = cells_object.into_iter().collect(); // Convert BTreeMap to serde_json::Value
+                        sheet_results.insert(label.clone(), value);
                     }
                 }
             }

@@ -1,10 +1,11 @@
 use anyhow::{Result, Error};
 use calamine::{Range, Data};
 use serde_json::{Map, Value};
+use indexmap::IndexMap;
 use crate::utils::{conversions, manipulations};
 
-pub fn extract_values(sheet: &Range<Data>, instructions: &Map<String, Value>) -> Result<Map<String, Value>, Error> {
-    let mut results = Map::new();
+pub fn extract_values(sheet: &Range<Data>, instructions: &Map<String, Value>) -> Result<IndexMap<String, Value>, Error> {
+    let mut results = IndexMap::new();
     for (key, value) in instructions {
         match value {
             Value::Array(addresses) => {

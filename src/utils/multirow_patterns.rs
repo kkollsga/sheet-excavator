@@ -1,10 +1,11 @@
 use anyhow::{Result, Error};
 use calamine::{Range, Data};
 use serde_json::{Map, Value};
+use indexmap::IndexMap;
 use crate::utils::{conversions, manipulations};
 
-pub fn extract_rows(sheet: &Range<Data>, instructions: &Map<String, Value>) -> Result<Map<String, Value>, Error> {
-    let mut results = Map::new();
+pub fn extract_rows(sheet: &Range<Data>, instructions: &Map<String, Value>) -> Result<IndexMap<String, Value>, Error> {
+    let mut results = IndexMap::new();
 
     // Retrieve and parse the row_range array
     let row_range = instructions.get("row_range")

@@ -1,12 +1,13 @@
 use anyhow::{Result, Error};
 use calamine::{Range, Data};
 use serde_json::{Map, Value};
+use indexmap::IndexMap;
 use crate::utils::{conversions, manipulations};
 
 pub fn extract_dataframe(
     sheet: &Range<Data>,
     instructions: &Map<String, Value>
-) -> Result<Map<String, Value>, Error> {
+) -> Result<IndexMap<String, Value>, Error> {
     // Extracting row range
     let row_range = instructions.get("row_range")
         .and_then(Value::as_array)
@@ -37,7 +38,7 @@ pub fn extract_dataframe(
         _ => return Err(Error::msg("Invalid 'header_row' format")),
     };
     let separator = instructions.get("separator").and_then(Value::as_str).unwrap_or(" ");
-    let mut dataframe: Map<String, Value> = Map::new();
+    let mut dataframe: IndexMap<String, Value> = IndexMap::new();
     for i in start_column_index..=end_column_index {
         let header_string = manipulations::extract_headers(sheet, &header_indices, i, separator)?;
 
