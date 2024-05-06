@@ -29,13 +29,12 @@ pip install --upgrade https://github.com/kkollsga/sheet_excavator/blob/main/whee
 ```
 
 ## Sheet Excavator Usage Guide
-Detailed documentation on how to use Sheet Excavator will be provided here or linked to a documentation site.
 
-sheet_excavator is a Python library designed to assist in extracting data from Excel sheets. This guide provides an overview of how to use the library and its various features.
+### Overview
+`sheet_excavator` is a Python library designed to assist in extracting data from Excel sheets. This guide provides an overview of how to use the library and its various features.
 
-#### Basic Usage
-
-To get started with sheet_excavator, you can follow these steps:
+### Basic Usage
+To get started with `sheet_excavator`, you can follow these steps:
 
 ```python
 import sheet_excavator
@@ -46,23 +45,21 @@ extraction_details = [...]  # define extraction details (see below)
 results = sheet_excavator.excel_extract(files, extraction_details, 10)
 ```
 
-#### Extraction Details
+### Extraction Details
+The `extraction_details` parameter is a list of dictionaries that define the extraction rules for each Excel sheet. Each dictionary contains the following keys:
 
-The extraction_details parameter is a list of dictionaries that define the extraction rules for each Excel sheet. Each dictionary contains the following keys:
+* `sheets`: A list of sheet names to extract data from.
+* `extractions`: A list of extraction rules (see below).
+* `skip_sheets`: An optional list of sheet names to skip.
+* `break_if_null`: An optional column name to break extraction if null.
 
-sheets: A list of sheet names to extract data from.
-extractions: A list of extraction rules (see below).
-skip_sheets: An optional list of sheet names to skip.
-break_if_null: An optional column name to break extraction if null.
+### Extraction Rules
+The `extractions` key in the `extraction_details` dictionary contains a list of extraction rules. There are three types of extraction rules: `single_cells`, `multirow_patterns`, and `dataframe`.
 
-#### Extraction Rules
+#### Single Cells Extraction
+The `single_cells` extraction rule extracts individual cells from the Excel sheet.
 
-The extractions key in the extraction_details dictionary contains a list of extraction rules. There are three types of extraction rules: single_cells, multirow_patterns, and dataframe.
-
-**Single Cells Extraction**
-The single_cells extraction rule extracts individual cells from the Excel sheet.
-
-Example:
+*Example:*
 ```python
 {
     "sheets": ["Sheet1"],
@@ -81,14 +78,14 @@ Example:
     ]
 }
 ```
-*Instructions:*
+**Instructions:**
 
-instructions: A dictionary where the keys are the column names and the values are the cell references (e.g., "a1", "b2", etc.).
-Multirow Patterns Extraction
-The multirow_patterns extraction rule extracts data from multiple rows in the Excel sheet based on a pattern.
+* `instructions`: A dictionary where the keys are the column names and the values are the cell references (e.g., "a1", "b2", etc.).
 
-Example:
+#### Multirow Patterns Extraction
+The `multirow_patterns` extraction rule extracts data from multiple rows in the Excel sheet based on a pattern.
 
+*Example:*
 ```python
 {
     "sheets": ["Generell info og kommentarer"],
@@ -121,16 +118,16 @@ Example:
     ]
 }
 ```
-Instructions:
+**Instructions:**
 
-row_range: A list of two integers defining the row range to extract.
-unique_id: The column to use as a unique identifier.
-columns: A dictionary where the keys are the column names and the values are the column letters (e.g., "B", "C", etc.).
-Dataframe Extraction
+* `row_range`: A list of two integers defining the row range to extract.
+* `unique_id`: The column to use as a unique identifier.
+* `columns`: A dictionary where the keys are the column names and the values are the column letters (e.g., "B", "C", etc.).
+
+#### Dataframe Extraction
 The dataframe extraction rule extracts data into a Pandas DataFrame.
 
-Example:
-
+*Example:*
 ```python
 {
     "sheets": ["Profil_*"],
@@ -147,12 +144,13 @@ Example:
     ]
 }
 ```
-Instructions:
+**Instructions:**
 
-row_range: A list of two integers defining the row range to extract.
-column_range: A list of column letters to extract.
-header_row: A list of row numbers to use as the header.
-By following this guide, you should be able to use the sheet_excavator library to extract data from your Excel sheets.
+* `row_range`: A list of two integers defining the row range to extract.
+* `column_range`: A list of column letters to extract.
+* `header_row`: A list of row numbers to use as the header.
+
+By following this guide, you should be able to use the `sheet_excavator` library to extract data from your Excel sheets.
 
 ## License
 Sheet Excavator is released under the MIT License. See the LICENSE file for more details.
