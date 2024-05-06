@@ -53,10 +53,10 @@ pub fn extract_rows(sheet: &Range<Data>, instructions: &Map<String, Value>) -> R
                         }
                     }
 
-                    let final_value = if cell_values.len() == 1 {
-                        cell_values.pop().unwrap()
-                    } else {
-                        Value::Array(cell_values)
+                    let final_value = match cell_values.len() {
+                        0 => Value::Null,
+                        1 => cell_values.pop().unwrap(),
+                        _ => Value::Array(cell_values),
                     };
                     row_data.insert(column_name.clone(), final_value);
                 }
