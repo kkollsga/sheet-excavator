@@ -1,5 +1,6 @@
 use chrono::{NaiveDate, Duration};
 use anyhow::{Result, Error};
+use std::path::Path;
 
 /// Converts an Excel date-time float to a human-readable ISO 8601 string.
 pub fn excel_datetime(excel_date: f64) -> Result<String, Error> {
@@ -46,4 +47,13 @@ pub fn column_name_to_index(column_name: &str) -> Result<u32, Error> {
         col_idx += digit * 26u32.pow(i as u32);
     }
     Ok(col_idx - 1)  // converting to 0-based index
+}
+
+// Helper function to extract the base filename without extension
+pub fn extract_filename(path: &str) -> String {
+    Path::new(path)
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_string()
 }

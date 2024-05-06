@@ -1,19 +1,10 @@
 use tokio::sync::Semaphore; // Import Semaphore from tokio::sync
-use std::{sync::Arc, path::Path, time::Instant}; // Import Arc for creating reference-counted pointers
+use std::{sync::Arc, time::Instant}; // Import Arc for creating reference-counted pointers
 use futures::stream::{FuturesUnordered, StreamExt}; // Import FuturesUnordered and StreamExt for managing and polling futures
 use serde_json::{Value, Map}; // Import serde_json::Value
 use crate::read_excel::process_file;
 use anyhow::{Result, Error};// Use anyhow::Result for simplified error handling
-
-
-// Helper function to extract the base filename without extension
-fn extract_filename(path: &str) -> String {
-    Path::new(path)
-        .file_stem()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default()
-        .to_string()
-}
+use crate::utils::conversions;
 
 pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Value>, num_workers: usize) -> Result<Map<String, Value>, Error> {
     println!("Processing files!");
@@ -32,14 +23,14 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
 
         futures.push(tokio::spawn(async move {
             let result = process_file(path_str_clone, details_clone).await;
-            let files_left = total - index + 1;
+            let files_left = total - (index + 1);
             let avg_time_per_file = if index > 0 {
-                start_time.elapsed().as_secs_f64() / index as f64
+                start_time.elapsed().as_secs_f64() / (index+1) as f64
             } else {
                 0.0
             };
             let estimated_time_left = avg_time_per_file * files_left as f64;
-            println!("Progress: {}/{} files. Avg: {:.2}s. Time left: {:.2}s.", index, total, avg_time_per_file, estimated_time_left);
+            println!("Progress: {}/{} files. Avg: {:.2}s. Time left: {:.2}s.", (index+1), total, avg_time_per_file, estimated_time_left);
             drop(permit);
             result
         }));
@@ -50,7 +41,7 @@ pub async fn process_files(file_paths: Vec<String>, extraction_details: Vec<Valu
         match res {
             Ok(Ok(value)) => {
                 if let Some(file_path) = value.get("filepath").and_then(|v| v.as_str()) {
-                    let base_filename = extract_filename(file_path);
+                    let base_filename = conversions::extract_filename(file_path);
                     let mut filename_key = base_filename.clone();
                     let mut counter = 1;
                     // Ensure the key is unique by appending a counter if needed

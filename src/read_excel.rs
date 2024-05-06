@@ -81,7 +81,8 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             let sheet = match workbook.worksheet_range(sheet_name) {
                 Ok(sheet) => sheet,
                 Err(_) => {
-                    println!("Warning: Sheet '{}' not found, skipping.", sheet_name);
+                    let base_filename = conversions::extract_filename(&file_path);
+                    println!("{}: Sheet '{}' not found, skipping extraction.", base_filename, sheet_name);
                     continue;
                 }
             };
@@ -91,11 +92,10 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 let (cell_value, _) = manipulations::extract_cell_value(&sheet, row, col, false)?;
                 if let Some(value) = cell_value {
                     if value.is_null() {
-                        println!("Breaking due to null value at {} in {}", break_if_null_value, sheet_name);
                         break; // Break out of the sheet loop
                     }
                 } else {
-                    println!("Cell {:?} at {} is null or missing", break_if_null_value, sheet_name);
+                    break;
                 }
             }
 

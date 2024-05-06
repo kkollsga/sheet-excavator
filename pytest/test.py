@@ -20,4 +20,4 @@ extraction_details = [
 ]
 
 results = sheet_excavator.excel_extract(files, extraction_details, 10)
-print(json.dumps(json.loads(results), indent=3))
+#print(json.dumps(json.loads(results), indent=3))
