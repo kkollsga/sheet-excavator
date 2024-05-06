@@ -36,7 +36,7 @@ pub fn address_to_row_col(cell_address: &str) -> Result<(u32, u32), Error> {
     let row: u32 = row_str.parse().map_err(|_| Error::msg("Invalid row number"))?;
 
     // Adjust for 0-based indexing used by Calamine
-    Ok((row-1, col))
+    Ok((row, col))
 }
 
 pub fn column_name_to_index(column_name: &str) -> Result<u32, Error> {

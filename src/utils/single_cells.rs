@@ -19,13 +19,13 @@ pub fn extract_values(sheet: &Range<Data>, instructions: &Map<String, Value>) ->
                         }
                         _ => return Err(Error::msg("Invalid or missing row/column specification")),
                     };
-                    match manipulations::extract_cell_value(sheet, row, col) {
-                        Ok(Some(cell_value)) => {
+                    match manipulations::extract_cell_value(sheet, row, col, false) {
+                        Ok((Some(cell_value), _)) => {
                             if !cell_value.is_null() {
                                 address_values.push(cell_value);
                             }
                         }
-                        Ok(None) => (), // Ignore null values
+                        Ok((None, _)) => (), // Ignore null values
                         Err(e) => return Err(e),
                     }
                 }
@@ -33,9 +33,9 @@ pub fn extract_values(sheet: &Range<Data>, instructions: &Map<String, Value>) ->
             }
             Value::String(cell_address) => {
                 let (row, col) = conversions::address_to_row_col(&cell_address)?;
-                match manipulations::extract_cell_value(sheet, row, col) {
-                    Ok(Some(cell_value)) => { results.insert(key.clone(), cell_value); }
-                    Ok(None) => { results.insert(key.clone(), Value::Null); }
+                match manipulations::extract_cell_value(sheet, row, col, false) {
+                    Ok((Some(cell_value), _)) => { results.insert(key.clone(), cell_value); }
+                    Ok((None, _)) => { results.insert(key.clone(), Value::Null); }
                     Err(e) => return Err(e),
                 }
             }

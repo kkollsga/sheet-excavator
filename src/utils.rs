@@ -6,6 +6,7 @@ use serde_json::{Value, Map};
 
 pub mod single_cells;
 pub mod multirow_patterns;
+pub mod dataframe;
 pub mod conversions;
 pub mod manipulations;
 

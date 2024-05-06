@@ -2,7 +2,7 @@ use calamine::{Reader, open_workbook_auto};
 use serde_json::{Map, Value};
 use anyhow::{Result, Error};
 use std::iter::Iterator;
-use crate::utils::{conversions, manipulations, single_cells, multirow_patterns, match_sheet_names};
+use crate::utils::{conversions, manipulations, dataframe, single_cells, multirow_patterns, match_sheet_names};
 
 fn extend_unique<T: PartialEq>(vec: &mut Vec<T>, value: T) {
     if !vec.contains(&value) {
@@ -10,10 +10,8 @@ fn extend_unique<T: PartialEq>(vec: &mut Vec<T>, value: T) {
     }
 }
 
-
-
 pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> Result<Value, Error> {
-    let mut results = serde_json::Map::new();
+    let mut results = Map::new();
     results.insert("filepath".to_string(), Value::String(file_path.clone()));
 
     for extract in extraction_details.iter() {
@@ -30,7 +28,7 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().cloned().collect::<Vec<_>>())
                     .unwrap_or_else(|| Vec::new());
-                
+
                 for sheet in sheets_array {
                     if let Some(sheet_str) = sheet.as_str() {
                         if sheet_str.contains('*') {
@@ -55,6 +53,7 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
         } else {
             return Err(Error::msg("Missing \"sheets\" key in extraction details"));
         }
+
         let break_if_null = map.get("break_if_null").and_then(|f| f.as_str());
         let extractions = map
             .get("extractions")
@@ -78,8 +77,6 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 Ok((function, function_label, instructions))
             })
             .collect::<Result<Vec<(String, String, Map<String, Value>)>, Error>>()?;
-
-        
         for sheet_name in &sheet_names {
             let sheet = match workbook.worksheet_range(sheet_name) {
                 Ok(sheet) => sheet,
@@ -88,27 +85,26 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                     continue;
                 }
             };
+
             if let Some(break_if_null_value) = break_if_null {
                 let (row, col) = conversions::address_to_row_col(break_if_null_value)?;
-                match manipulations::extract_cell_value(&sheet, row, col) {
-                    Ok(Some(cell_value)) => {
-                        if cell_value.is_null() {
-                            break; // Break out of the sheet loop
-                        }
-                    },
-                    Ok(None) => {
-                        println!("Cell {:?} is null", break_if_null_value);
-                    },
-                    Err(e) => return Err(e),
+                let (cell_value, _) = manipulations::extract_cell_value(&sheet, row, col, false)?;
+                if let Some(value) = cell_value {
+                    if value.is_null() {
+                        println!("Breaking due to null value at {} in {}", break_if_null_value, sheet_name);
+                        break; // Break out of the sheet loop
+                    }
+                } else {
+                    println!("Cell {:?} at {} is null or missing", break_if_null_value, sheet_name);
                 }
             }
-
 
             let mut sheet_results = Map::new();
             for (function, label, instructions) in &extractions {
                 let cells_object = match function.as_str() {
                     "single_cells" => single_cells::extract_values(&sheet, &instructions),
                     "multirow_patterns" => multirow_patterns::extract_rows(&sheet, &instructions),
+                    "dataframe" => dataframe::extract_dataframe(&sheet, &instructions),
                     _ => {
                         println!("Unsupported function type '{}'", function);
                         continue;
@@ -116,7 +112,6 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                 }?;
 
                 if label.is_empty() {
-                    // If label is empty, merge cells_object into sheet_results with duplicate handling
                     for (key, value) in cells_object {
                         let mut unique_key = key.clone();
                         let mut counter = 1;
@@ -127,29 +122,25 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
                         sheet_results.insert(unique_key, value);
                     }
                 } else {
-                    // Merge cells_object into sheet_results under the specified label
-                    if let Some(Value::Object(existing_map)) = sheet_results.get_mut(&label.to_string()) {
-                        // If the label already exists, merge the new cells_object into the existing object
+                    if let Some(Value::Object(existing_map)) = sheet_results.get_mut(label.as_str()) {
                         for (key, value) in cells_object {
-                            existing_map.insert(key, value); // Update existing keys or add new keys
+                            existing_map.insert(key, value);
                         }
                     } else {
-                        // If the label does not exist, simply add it
                         sheet_results.insert(label.clone(), Value::Object(cells_object));
                     }
                 }
             }
 
             if let Some(Value::Object(existing_map)) = results.get_mut(&sheet_name.to_string()) {
-                // If sheet_name already exists, merge new sheet results into existing map
                 for (key, value) in sheet_results {
                     existing_map.insert(key, value);
                 }
             } else {
-                // Add new sheet results if not present
                 results.insert(sheet_name.to_string(), Value::Object(sheet_results));
             }
         }
     }
+
     Ok(Value::Object(results))
 }
