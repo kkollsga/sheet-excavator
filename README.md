@@ -1,5 +1,5 @@
 # Sheet Excavator
-
+* [GitHub](https://github.com/kkollsga/sheet_excavator)
 
 ## Overview
 Sheet Excavator is a Rust-based tool designed to facilitate the efficient extraction of data from standardized Excel forms. Traditional reporting often relies on Excel forms that do not conform to the typical CSV data storage format, making data extraction challenging. Existing Python-based workflows may also suffer from performance issues when handling large databases of forms stored in .xlsx files.
