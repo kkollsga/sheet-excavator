@@ -1,5 +1,5 @@
 # Sheet Excavator
-* [GitHub](https://github.com/kkollsga/sheet_excavator)
+* **GitHub**: https://github.com/kkollsga/sheet_excavator
 
 ## Overview
 Sheet Excavator is a Rust-based tool designed to facilitate the efficient extraction of data from standardized Excel forms. Traditional reporting often relies on Excel forms that do not conform to the typical CSV data storage format, making data extraction challenging. Existing Python-based workflows may also suffer from performance issues when handling large databases of forms stored in .xlsx files.
@@ -21,11 +21,11 @@ Windows AMD64 system
 ### Install with pip
 *To install Sheet Excavator, run the following command in your terminal:*
 ```
-pip install https://github.com/kkollsga/sheet_excavator/blob/main/dist/sheet_excavator-0.1.28-cp312-none-win_amd64.whl?raw=true
+pip install sheet-excavator
 ```
 *To upgrade an already installed version of Sheet Excavator, use:*
 ```
-pip install --upgrade https://github.com/kkollsga/sheet_excavator/blob/main/dist/sheet_excavator-0.1.28-cp312-none-win_amd64.whl?raw=true
+pip install --upgrade sheet-excavator
 ```
 
 ## Sheet Excavator Usage Guide
