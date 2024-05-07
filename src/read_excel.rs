@@ -20,7 +20,15 @@ pub async fn process_file(file_path: String, extraction_details: Vec<Value>) -> 
             _ => return Err(Error::msg("Extraction detail should be a JSON object")),
         };
 
-        let mut workbook = open_workbook_auto(&file_path).map_err(Error::new)?;
+        let mut workbook = match open_workbook_auto(&file_path) {
+            Ok(workbook) => workbook,
+            Err(err) => {
+                let base_filename = conversions::extract_filename(&file_path);
+                println!("Error: {} :: {}", base_filename, err);
+                return Ok(Value::Null); // or return an empty object, depending on your needs
+            }
+        };
+
         let mut sheet_names: Vec<String> = Vec::new();
         if let Some(sheets) = map.get("sheets") {
             if let Some(sheets_array) = sheets.as_array() {
