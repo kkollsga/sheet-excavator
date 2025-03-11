@@ -1,30 +1,32 @@
 // utils.rs
-
 use pyo3::types::{PyList, PyDict, PyString, PyFloat, PyInt};
 use pyo3::prelude::*;
+use pyo3::Bound;
 use serde_json::{Value, Map};
-
 pub mod single_cells;
 pub mod multirow_patterns;
 pub mod dataframe;
 pub mod conversions;
 pub mod manipulations;
 
-fn pydict_to_json_value(pydict: &PyDict) -> PyResult<Value> {
+fn pydict_to_json_value(pydict: &Bound<'_, PyDict>) -> PyResult<Value> {
     let mut map = Map::new(); // Use serde_json::Map directly
-
     for (k, v) in pydict {
         let key: String = k.extract()?;
-        let value = python_object_to_value(v)?;
+        // Add the & here to pass a reference to v
+        let value = python_object_to_value(&v)?;
         map.insert(key, value); // Insert into serde_json::Map
     }
-
     Ok(Value::Object(map)) // Create serde_json::Value::Object
 }
+
 /// Helper function to convert Python objects to `serde_json::Value`.
-fn python_object_to_value(obj: &PyAny) -> PyResult<Value> {
+fn python_object_to_value(obj: &Bound<'_, PyAny>) -> PyResult<Value> {
     if let Ok(list) = obj.downcast::<PyList>() {
-        let vec: Vec<Value> = list.iter().map(python_object_to_value).collect::<PyResult<_>>()?;
+        // Use a closure to adapt the function for the map call
+        let vec: Vec<Value> = list.iter()
+            .map(|item| python_object_to_value(&item))
+            .collect::<PyResult<_>>()?;
         Ok(Value::from(vec))
     } else if let Ok(dict) = obj.downcast::<PyDict>() {
         pydict_to_json_value(dict)
@@ -43,13 +45,12 @@ fn python_object_to_value(obj: &PyAny) -> PyResult<Value> {
 }
 
 /// Converts a `PyList` of `PyDicts` into a `Vec<serde_json::Value>`.
-pub fn pylist_to_json(pylist: &PyList) -> PyResult<Vec<Value>> {
+pub fn pylist_to_json(pylist: &Bound<'_, PyList>) -> PyResult<Vec<Value>> {
     pylist.iter().map(|item| {
         let detail_dict = item.downcast::<PyDict>()?;
         pydict_to_json_value(detail_dict)
     }).collect()
 }
-
 
 pub fn match_sheet_names(sheet_names: &[String], pattern: &str) -> Vec<String> {
     let (start, end) = match pattern.find('*') {
@@ -60,7 +61,6 @@ pub fn match_sheet_names(sheet_names: &[String], pattern: &str) -> Vec<String> {
         },
         None => ("", ""), // Default start and end if asterisk is not found
     };
-
     sheet_names
         .iter()
         .filter_map(|sheet_name| {
