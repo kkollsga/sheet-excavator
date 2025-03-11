@@ -37,7 +37,7 @@ import json
 files = glob.glob(r"D:\temp\*") # List of files to process
 extraction_details = [...]  # define list extraction details to apply to each file (see below)
 workers = 10 # Number of parallell workers, should reflect number of cpu cores on the system.
-results = sheet_excavator.excel_extract(files, extraction_details, workers0) # excel_extractor returns a json formated string
+results = sheet_excavator.excel_extract(files, extraction_details, workers) # excel_extractor returns a json formated string
 dict_results = json.loads(results) # convert the json string to a python dict
 print(json.dumps(dict_results, indent=3))
 ```
