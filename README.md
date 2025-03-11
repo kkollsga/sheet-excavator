@@ -1,5 +1,5 @@
 # Sheet Excavator
-* **GitHub**: https://github.com/kkollsga/sheet_excavator
+A fast Rust-powered tool for extracting data from Excel forms into JSON.
 
 ## Overview
 Sheet Excavator is a Rust-based tool designed to facilitate the efficient extraction of data from standardized Excel forms. Traditional reporting often relies on Excel forms that do not conform to the typical CSV data storage format, making data extraction challenging. Existing Python-based workflows may also suffer from performance issues when handling large databases of forms stored in .xlsx files.
@@ -10,13 +10,6 @@ Leveraging Rust's high performance and robust multithreading capabilities, Sheet
 - High Performance: Utilizes Rust’s efficiency and multithreading to handle large datasets.
 - Flexible Data Extraction: Supports various extraction methods for complex Excel form layouts.
 - JSON Output: Seamlessly integrates with modern data pipelines by outputting data in JSON format.
-
-## Installation
-Sheet Excavator is currently in its alpha phase, with limited functionality and is only compatible with Python 3.12 on Windows (AMD64 architecture). You can install the library directly from the repository using pip.
-
-### Prerequisites
-Python 3.12
-Windows AMD64 system
 
 ### Install with pip
 *To install Sheet Excavator, run the following command in your terminal:*
